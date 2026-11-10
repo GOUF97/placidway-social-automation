@@ -1,0 +1,183 @@
+{
+  "name": "PlacidWay Social Media Content Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 24
+            }
+          ]
+        }
+      },
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://www.placidway.com/sitemap.xml",
+        "options": {}
+      },
+      "name": "Extract PlacidWay Sitemap",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1SampleGoogleSheetIDForDeduplication",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "PostedURLs",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "URL": "={{ $json.url }}",
+            "Title": "={{ $json.title }}",
+            "Status": "Posted"
+          }
+        }
+      },
+      "name": "Deduplication & State Store",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        680,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are a social media marketing expert for PlacidWay, a medical tourism platform. Write a concise, engaging Facebook post based on the following extracted content title: {{$json.title}} and URL: {{$json.url}}.\n\nCRITICAL RULES:\n1. Hook, 2-4 short value lines, CTA, and 3-5 hashtags.\n2. Total character count before the link must be under 500 characters.\n3. STRICT GUARDRAILS: Do NOT make medical claims, promises of treatment outcomes, or invent prices. Stay strictly factual to medical tourism information.",
+        "options": {}
+      },
+      "name": "AI Generate Post & Guardrails",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        900,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "review_mode_check",
+              "leftValue": "={{ $env.APPROVAL_MODE }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      },
+      "name": "Approval Check IF",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1120,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "post",
+        "message": "={{ $json.output }}",
+        "additionalFields": {}
+      },
+      "name": "Publish to Facebook Page",
+      "type": "n8n-nodes-base.facebookGraph",
+      "typeVersion": 1,
+      "position": [
+        1360,
+        200
+      ]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Extract PlacidWay Sitemap",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract PlacidWay Sitemap": {
+      "main": [
+        [
+          {
+            "node": "Deduplication & State Store",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deduplication & State Store": {
+      "main": [
+        [
+          {
+            "node": "AI Generate Post & Guardrails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Generate Post & Guardrails": {
+      "main": [
+        [
+          {
+            "node": "Approval Check IF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Approval Check IF": {
+      "main": [
+        [
+          {
+            "node": "Publish to Facebook Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {}
+}
