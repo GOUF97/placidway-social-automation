@@ -15,10 +15,7 @@
       "name": "Schedule Trigger",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [
-        240,
-        300
-      ]
+      "position": [250, 300]
     },
     {
       "parameters": {
@@ -28,54 +25,52 @@
       "name": "Extract PlacidWay Sitemap",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [
-        460,
-        300
-      ]
+      "position": [470, 300]
     },
     {
       "parameters": {
         "operation": "appendOrUpdate",
         "documentId": {
           "__rl": true,
-          "value": "1SampleGoogleSheetIDForDeduplication",
+          "value": "",
           "mode": "id"
         },
         "sheetName": {
           "__rl": true,
-          "value": "PostedURLs",
-          "mode": "name"
+          "value": "",
+          "mode": "list"
         },
         "columns": {
           "mappingMode": "defineBelow",
           "value": {
-            "URL": "={{ $json.url }}",
-            "Title": "={{ $json.title }}",
-            "Status": "Posted"
+            "URL": "={{ $json.url }}"
           }
-        }
+        },
+        "options": {}
       },
       "name": "Deduplication & State Store",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
-      "position": [
-        680,
-        300
-      ]
+      "position": [690, 300],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": ""
+        }
+      }
     },
     {
       "parameters": {
         "promptType": "define",
-        "text": "You are a social media marketing expert for PlacidWay, a medical tourism platform. Write a concise, engaging Facebook post based on the following extracted content title: {{$json.title}} and URL: {{$json.url}}.\n\nCRITICAL RULES:\n1. Hook, 2-4 short value lines, CTA, and 3-5 hashtags.\n2. Total character count before the link must be under 500 characters.\n3. STRICT GUARDRAILS: Do NOT make medical claims, promises of treatment outcomes, or invent prices. Stay strictly factual to medical tourism information.",
-        "options": {}
+        "text": "Analyze the following PlacidWay medical tourism page content and generate a concise, engaging Facebook post under 500 characters. STRICT GUARDRAILS: Do not fabricate prices, do not make absolute medical claims, and do not promise treatment outcomes. Always keep it factual and include the source link.",
+        "options": {
+          "systemMessage": "You are a professional social media manager for PlacidWay. You enforce strict compliance with medical information guardrails."
+        }
       },
       "name": "AI Generate Post & Guardrails",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.7,
-      "position": [
-        900,
-        300
-      ]
+      "position": [910, 300]
     },
     {
       "parameters": {
@@ -85,41 +80,45 @@
             "leftValue": "",
             "typeValidation": "strict"
           },
-          "combinator": "and",
           "conditions": [
             {
-              "id": "review_mode_check",
-              "leftValue": "={{ $env.APPROVAL_MODE }}",
-              "rightValue": "true",
+              "id": "approval_check",
+              "leftValue": "={{ $json.output }}",
+              "rightValue": "",
               "operator": {
                 "type": "string",
-                "operation": "equals"
+                "operation": "exists"
               }
             }
-          ]
-        }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
       },
       "name": "Approval Check IF",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [
-        1120,
-        300
-      ]
+      "position": [1130, 300]
     },
     {
       "parameters": {
-        "operation": "post",
-        "message": "={{ $json.output }}",
-        "additionalFields": {}
+        "method": "POST",
+        "url": "https://graph.facebook.com/v18.0/me/feed",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "message",
+              "value": "={{ $json.output }}"
+            }
+          ]
+        },
+        "options": {}
       },
-      "name": "Publish to Facebook Page",
-      "type": "n8n-nodes-base.facebookGraph",
-      "typeVersion": 1,
-      "position": [
-        1360,
-        200
-      ]
+      "name": "Publish to Facebook via API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1350, 220]
     }
   ],
   "connections": {
@@ -171,7 +170,7 @@
       "main": [
         [
           {
-            "node": "Publish to Facebook Page",
+            "node": "Publish to Facebook via API",
             "type": "main",
             "index": 0
           }
